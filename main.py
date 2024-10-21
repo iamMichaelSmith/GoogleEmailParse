@@ -11,24 +11,23 @@ s3 = boto3.client('s3', region_name='us-east-1')  # Updated region
 
 # Function to download files from S3 bucket
 def download_emails_from_s3(bucket_name, download_directory):
-    s3_objects = s3.list_objects_v2(Bucket=bucket_name, Prefix='temp/')
+    # List objects in the root of the bucket
+    s3_objects = s3.list_objects_v2(Bucket=bucket_name)
+    
     for obj in s3_objects.get('Contents', []):
         file_name = obj['Key']
-        
-        # Extract only the file name (remove 'temp/' prefix)
-        local_file_name = file_name.split('/')[-1]  # Get only the last part of the path
-        local_file_path = os.path.join(download_directory, local_file_name)
 
-        if not local_file_name:
-            print(f"No valid file name found for S3 object {file_name}. Skipping.")
-            continue  # Skip if no valid file name
-        
-        try:
-            print(f"Attempting to download {file_name} to {local_file_path}")
-            s3.download_file(bucket_name, file_name, local_file_path)
-            print(f"Downloaded {local_file_name} from S3")
-        except Exception as e:
-            print(f"Failed to download {local_file_name}: {e}")
+        # Ensure we only download files (not folders)
+        if file_name.endswith('.nmap3'):  # Adjust this to the extension you're expecting
+            local_file_name = os.path.basename(file_name)  # Get the base file name
+            local_file_path = os.path.join(download_directory, local_file_name)
+
+            try:
+                print(f"Attempting to download {file_name} to {local_file_path}")
+                s3.download_file(bucket_name, file_name, local_file_path)
+                print(f"Downloaded {local_file_name} from S3")
+            except Exception as e:
+                print(f"Failed to download {local_file_name}: {e}")
 
 # Function to parse nmap3 email format and check for attachments
 def parse_email(file_path):
