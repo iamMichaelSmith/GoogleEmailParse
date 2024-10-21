@@ -43,8 +43,8 @@ def upload_csv_to_dynamodb(csv_file):
 # Main execution
 if __name__ == '__main__':
     bucket_name = 'google-takeout-emails'  # Your S3 bucket name
-    csv_file_key = 'email_data.csv'  # Use the filename directly since it's in the root
-    local_csv_file_path = '/tmp/email_data.csv'  # Temporary path to store downloaded CSV
+    csv_file_key = 'messages.csv'  # Your CSV filename
+    local_csv_file_path = '/tmp/messages.csv'  # Temporary path to store downloaded CSV
 
     # Download the CSV file from S3
     download_file_from_s3(bucket_name, csv_file_key, local_csv_file_path)
