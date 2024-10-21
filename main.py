@@ -15,9 +15,14 @@ def download_emails_from_s3(bucket_name, download_directory):
     for obj in s3_objects.get('Contents', []):
         file_name = obj['Key']
         # Extract only the file name (remove 'temp/' prefix)
-        local_file_name = file_name.split('/')[-1]
-        s3.download_file(bucket_name, file_name, os.path.join(download_directory, local_file_name))
-        print(f"Downloaded {local_file_name} from S3")
+        local_file_name = file_name.split('/')[-1]  # Get only the last part of the path
+        local_file_path = os.path.join(download_directory, local_file_name)
+        
+        try:
+            s3.download_file(bucket_name, file_name, local_file_path)
+            print(f"Downloaded {local_file_name} from S3")
+        except Exception as e:
+            print(f"Failed to download {local_file_name}: {e}")
 
 # Function to parse nmap3 email format and check for attachments
 def parse_email(file_path):
