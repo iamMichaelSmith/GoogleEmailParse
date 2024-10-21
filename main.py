@@ -14,11 +14,17 @@ def download_emails_from_s3(bucket_name, download_directory):
     s3_objects = s3.list_objects_v2(Bucket=bucket_name, Prefix='temp/')
     for obj in s3_objects.get('Contents', []):
         file_name = obj['Key']
+        
         # Extract only the file name (remove 'temp/' prefix)
         local_file_name = file_name.split('/')[-1]  # Get only the last part of the path
         local_file_path = os.path.join(download_directory, local_file_name)
+
+        if not local_file_name:
+            print(f"No valid file name found for S3 object {file_name}. Skipping.")
+            continue  # Skip if no valid file name
         
         try:
+            print(f"Attempting to download {file_name} to {local_file_path}")
             s3.download_file(bucket_name, file_name, local_file_path)
             print(f"Downloaded {local_file_name} from S3")
         except Exception as e:
