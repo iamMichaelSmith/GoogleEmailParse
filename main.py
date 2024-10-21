@@ -25,7 +25,9 @@ def process_csv(local_csv_file_path):
         email, name = extract_email_and_name(row)
 
         # Check for attachment presence (based on your sample)
-        has_attachment = 'attachments' in row[5].lower() if len(row) > 5 else False
+        has_attachment = (
+            'attachments' in row[5].lower() if len(row) > 5 and isinstance(row[5], str) else False
+        )
 
         # Extract timestamp from the row (index 3 based on your sample)
         timestamp = row[3] if len(row) > 3 else None
