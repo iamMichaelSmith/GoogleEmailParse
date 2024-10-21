@@ -4,7 +4,7 @@ import os
 
 # Initialize the DynamoDB client
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('YourDynamoDBTableName')  # Change to your DynamoDB table name
+table = dynamodb.Table('google-emails')  # Change to your DynamoDB table name
 
 def extract_email_and_name(row):
     # Extract the email and name from the appropriate columns
