@@ -1,56 +1,70 @@
 import pandas as pd
 import boto3
-import os
+import re
 
-# Set up AWS S3 and DynamoDB connections
-s3 = boto3.client('s3', region_name='us-east-1')  # Adjust the region if necessary
-dynamodb = boto3.resource('dynamodb', region_name='us-east-1')  # Adjust the region if necessary
-table = dynamodb.Table('google-emails')  # Your DynamoDB table name
+def extract_email_and_name(row):
+    # Use regex to find email addresses and names
+    email_match = re.findall(r'<([^>]+)>', row[2])
+    name_match = re.findall(r'([^<]+)', row[2])
+    
+    if email_match:
+        email = email_match[0]
+    else:
+        email = None
+        
+    if name_match:
+        name = name_match[0].strip()
+    else:
+        name = None
+    
+    return email, name
 
-# Function to download a file from S3
-def download_file_from_s3(bucket_name, file_key, download_path):
-    try:
-        s3.download_file(bucket_name, file_key, download_path)
-        print(f"Downloaded {file_key} from S3 to {download_path}")
-    except Exception as e:
-        print(f"Error downloading {file_key}: {e}")
+def process_csv(local_csv_file_path):
+    # Read the CSV file into a DataFrame
+    df = pd.read_csv(local_csv_file_path, header=None)
 
-# Function to upload CSV data to DynamoDB
-def upload_csv_to_dynamodb(csv_file):
-    # Read the CSV file
-    df = pd.read_csv(csv_file)
+    # Create a list to hold processed entries
+    processed_entries = []
 
-    # Iterate over each row in the DataFrame
-    for index, row in df.iterrows():
-        # Prepare the item to put in DynamoDB
-        item = {
-            'ClientID': row['Email'],  # Change this according to your CSV column names
-            'Email': row['Email'],
-            'Subject': row['Subject'],  # Adjust column names based on your CSV
-            'Date': row['Date'],
-            'MessageContent': row['MessageContent'],  # Adjust as needed
-            'HasAttachment': row['HasAttachment'],  # Adjust as needed
-            'AttachmentFilenames': row['AttachmentFilenames']  # Adjust as needed
-        }
+    for _, row in df.iterrows():
+        email, name = extract_email_and_name(row)
+        
+        # Check for attachment presence
+        has_attachment = 'attachments' in row[5].lower() if len(row) > 5 else False
+        
+        # Extract timestamp from the row
+        timestamp = row[3] if len(row) > 3 else None
+        
+        processed_entries.append({
+            'Email': email,
+            'Name': name,
+            'Attachments': has_attachment,
+            'MessageContent': row[5] if len(row) > 5 else None,
+            'Timestamp': timestamp
+        })
 
-        # Store the item in DynamoDB
-        try:
-            table.put_item(Item=item)
-            print(f"Uploaded item: {item}")
-        except Exception as e:
-            print(f"Failed to upload item: {item}. Error: {e}")
+    # Remove duplicates based on email and message content
+    processed_entries = pd.DataFrame(processed_entries).drop_duplicates(subset=['Email', 'MessageContent'])
 
-# Main execution
-if __name__ == '__main__':
-    bucket_name = 'google-takeout-emails'  # Your S3 bucket name
-    csv_file_key = 'messages.csv'  # Your CSV filename
-    local_csv_file_path = '/tmp/messages.csv'  # Temporary path to store downloaded CSV
+    return processed_entries
 
-    # Download the CSV file from S3
-    download_file_from_s3(bucket_name, csv_file_key, local_csv_file_path)
+def upload_to_dynamodb(processed_entries):
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+    table = dynamodb.Table('google-emails')  # Change to your actual table name
 
-    # Upload CSV data to DynamoDB
-    upload_csv_to_dynamodb(local_csv_file_path)
+    for _, entry in processed_entries.iterrows():
+        table.put_item(
+            Item={
+                'Email': entry['Email'],
+                'Name': entry['Name'],
+                'Attachments': entry['Attachments'],
+                'MessageContent': entry['MessageContent'],
+                'Timestamp': entry['Timestamp'],
+            }
+        )
 
-    # Optionally, clean up the downloaded file
-    os.remove(local_csv_file_path)
+if __name__ == "__main__":
+    local_csv_file_path = '/tmp/messages.csv'  # Update with the actual path where your CSV file is downloaded
+    processed_entries = process_csv(local_csv_file_path)
+    upload_to_dynamodb(processed_entries)
+    print("Data uploaded to DynamoDB successfully.")
