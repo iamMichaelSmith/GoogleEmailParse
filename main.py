@@ -4,18 +4,20 @@ from email import policy
 from email.parser import BytesParser
 import os
 
-# Set up DynamoDB and S3 connections
-dynamodb = boto3.resource('dynamodb', region_name='us-west-2')  # Change region if needed
+# Set up DynamoDB and S3 connections for us-east-1 region
+dynamodb = boto3.resource('dynamodb', region_name='us-east-1')  # Updated region
 table = dynamodb.Table('google-emails')  # Your DynamoDB table
-s3 = boto3.client('s3')
+s3 = boto3.client('s3', region_name='us-east-1')  # Updated region
 
 # Function to download files from S3 bucket
 def download_emails_from_s3(bucket_name, download_directory):
-    s3_objects = s3.list_objects_v2(Bucket=bucket_name)
+    s3_objects = s3.list_objects_v2(Bucket=bucket_name, Prefix='temp/')
     for obj in s3_objects.get('Contents', []):
         file_name = obj['Key']
-        s3.download_file(bucket_name, file_name, os.path.join(download_directory, file_name))
-        print(f"Downloaded {file_name} from S3")
+        # Extract only the file name (remove 'temp/' prefix)
+        local_file_name = file_name.split('/')[-1]
+        s3.download_file(bucket_name, file_name, os.path.join(download_directory, local_file_name))
+        print(f"Downloaded {local_file_name} from S3")
 
 # Function to parse nmap3 email format and check for attachments
 def parse_email(file_path):
@@ -65,7 +67,7 @@ def store_in_dynamodb(email_data):
 # Scrubber function to loop over emails
 def scrub_emails(directory):
     for filename in os.listdir(directory):
-        if filename.endswith('.nmap3'):  # Adjust for file extension
+        if filename.endswith('.nmap3'):  # Adjust for your file extension
             file_path = os.path.join(directory, filename)
             email_data = parse_email(file_path)
             store_in_dynamodb(email_data)
@@ -73,6 +75,7 @@ def scrub_emails(directory):
 
 # Main function to download and scrub emails
 if __name__ == '__main__':
-    download_directory = '/path/to/download/folder'  # Update this path
+    download_directory = '/home/ec2-user/email-downloads'  # Update this path
+    os.makedirs(download_directory, exist_ok=True)  # Ensure the download directory exists
     download_emails_from_s3('google-takeout-emails', download_directory)
     scrub_emails(download_directory)
