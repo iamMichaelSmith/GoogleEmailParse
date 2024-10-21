@@ -4,9 +4,18 @@ from email import policy
 from email.parser import BytesParser
 import os
 
-# Set up DynamoDB connection
-dynamodb = boto3.resource('dynamodb', region_name='us-west-2')  # Change region as needed
-table = dynamodb.Table('ClientEmails')  # Replace with your table name
+# Set up DynamoDB and S3 connections
+dynamodb = boto3.resource('dynamodb', region_name='us-west-2')  # Change region if needed
+table = dynamodb.Table('google-emails')  # Your DynamoDB table
+s3 = boto3.client('s3')
+
+# Function to download files from S3 bucket
+def download_emails_from_s3(bucket_name, download_directory):
+    s3_objects = s3.list_objects_v2(Bucket=bucket_name)
+    for obj in s3_objects.get('Contents', []):
+        file_name = obj['Key']
+        s3.download_file(bucket_name, file_name, os.path.join(download_directory, file_name))
+        print(f"Downloaded {file_name} from S3")
 
 # Function to parse nmap3 email format and check for attachments
 def parse_email(file_path):
@@ -62,6 +71,8 @@ def scrub_emails(directory):
             store_in_dynamodb(email_data)
             print(f"Stored email from {email_data['Sender']}, HasAttachment: {email_data['HasAttachment']}")
 
-# Run scrubber on a specific folder
+# Main function to download and scrub emails
 if __name__ == '__main__':
-    scrub_emails('/path/to/your/nmap3/folder')  # Update path
+    download_directory = '/path/to/download/folder'  # Update this path
+    download_emails_from_s3('google-takeout-emails', download_directory)
+    scrub_emails(download_directory)
