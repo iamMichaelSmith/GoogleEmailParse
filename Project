@@ -1,0 +1,29 @@
+Email Parsing Project Overview
+
+Project Use Case:
+The goal of this project is to parse emails exported from Google Takeout and store relevant data in AWS DynamoDB. By extracting email content and organizing it, the studio aims to remarket to old clients and contacts effectively.
+
+Services Used:
+
+AWS S3: Used to store the exported email files securely.
+Google Takeout: Utilized to download the studio's email data.
+AWS EC2: Deployed to run the application for parsing emails.
+SSH: Accessed the EC2 instance remotely for development and deployment.
+GitHub: Managed the project repository and version control.
+Firefox Thunderbird: Used to upload and extract .mbox files into a readable format.
+Steps Using CLI:
+
+Download Google Takeout:
+Export your email data from Google Takeout.
+
+Install Firefox Thunderbird:
+Download and install Thunderbird to manage your emails.
+
+Import Emails:
+Use Thunderbird to upload your .mbox files.
+
+Extract Emails:
+Export the emails to a .csv file using Thunderbird.
+
+Upload to S3:
+Use the following CLI command to upload the .csv file to your S3 bucket:
